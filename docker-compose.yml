@@ -5,10 +5,10 @@ services:
     build: ./wpoms_admin
     container_name: wpoms_admin
     ports:
-      - "8001:8000"
+      - "8001:8081"
 
   wpoms_web:
     build: ./wpoms_web
     container_name: wpoms_web
     ports:
-      - "8002:8000"
+      - "8002:8081"
