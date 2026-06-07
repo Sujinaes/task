@@ -1,0 +1,68 @@
+/* ─── Design Tokens ──────────────────────────────────────────────────── */
+:root {
+  --primary-container: #0d1e33;
+  --on-primary-container: #7686a0;
+  --secondary: #745b00;
+  --secondary-fixed-dim: #e5c363;
+  --surface: #f7f9ff;
+  --surface-container-low: #eff4fd;
+  --surface-container-lowest: #ffffff;
+  --on-surface: #161c22;
+  --on-surface-variant: #44474d;
+  --outline-variant: #c4c6cd;
+  --gold-gradient: linear-gradient(135deg, #d4af53 0%, #c4a04d 100%);
+  --font-headline: 'Cormorant Garamond', serif;
+  --font-body: 'Outfit', sans-serif;
+}
+
+/* Logo */
+.logoRow {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.logoMark {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 0.75rem;
+  border: 2px solid var(--secondary-fixed-dim);
+  background-color: rgba(229, 195, 99, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.logoLetter {
+  font-family: var(--font-headline);
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--secondary-fixed-dim);
+  line-height: 1;
+}
+
+.logoText {
+  display: flex;
+  flex-direction: column;
+}
+
+.logoTitle {
+  font-family: var(--font-headline);
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--secondary-fixed-dim);
+  line-height: 1;
+}
+
+.logoSubtitle {
+  font-family: var(--font-body);
+  font-size: 0.65rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--on-primary-container);
+  margin-top: 0.25rem;
+}
