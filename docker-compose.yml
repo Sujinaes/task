@@ -11,7 +11,7 @@ services:
     build: ./wpoms_web
     container_name: wpoms_web
     ports:
-      - "8002:8081"
+      - "8002:5173"
   db:
     image: postgres:15
     container_name: wpoms_db
