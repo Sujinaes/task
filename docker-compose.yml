@@ -12,3 +12,12 @@ services:
     container_name: wpoms_web
     ports:
       - "8002:8081"
+  db:
+    image: postgres:15
+    container_name: wpoms_db
+    environment:
+      POSTGRES_DB: wpoms-dev
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
