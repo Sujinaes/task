@@ -7,11 +7,14 @@ services:
     ports:
       - "8001:8081"
 
+  services:
   wpoms_web:
     build: ./wpoms_web
     container_name: wpoms_web
     ports:
       - "8002:5173"
+    environment:
+      VITE_API_BASE_URL: http://localhost:8001
   db:
     image: postgres:15
     container_name: wpoms_db
