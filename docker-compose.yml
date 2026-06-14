@@ -1,26 +1,48 @@
-version: "3.8"
 
 services:
-  wpoms_admin:
-    build: ./wpoms_admin
-    container_name: wpoms_admin
-    ports:
-      - "8001:8081"
 
-  services:
-  wpoms_web:
-    build: ./wpoms_web
-    container_name: wpoms_web
-    ports:
-      - "8002:5173"
-    environment:
-      VITE_API_BASE_URL: http://localhost:8001
   db:
     image: postgres:15
     container_name: wpoms_db
+
     environment:
       POSTGRES_DB: wpoms-dev
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
+
     ports:
       - "5432:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  wpoms_admin:
+    build: ./wpoms_admin
+    container_name: wpoms_admin
+
+    ports:
+      - "8001:8081"
+
+    depends_on:
+      - db
+
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/wpoms-dev
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+
+  wpoms_web:
+    build: ./wpoms_web
+    container_name: wpoms_web
+
+    ports:
+      - "8002:5173"
+
+    environment:
+      VITE_API_BASE_URL: http://localhost:8001
+
+    depends_on:
+      - wpoms_admin
+
+volumes:
+  postgres_data:
