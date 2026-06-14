@@ -13,9 +13,10 @@ jobs:
       matrix:
         include:
           - repo: backend-repo
-            path: ./backend
+            path: wpoms_admin
           - repo: frontend-repo
-            path: ./frontend
+            path: wpoms_web
+            
 
     steps:
       - name: Checkout code
