@@ -65,8 +65,5 @@ jobs:
 
             cd /home/ec2-user
 
-            docker pull 924982554051.dkr.ecr.ap-south-1.amazonaws.com/backend-repo:${{ github.sha }}
-            docker pull 924982554051.dkr.ecr.ap-south-1.amazonaws.com/frontend-repo:${{ github.sha }}
-
             docker compose pull
             docker compose up -d
