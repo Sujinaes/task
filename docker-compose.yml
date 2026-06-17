@@ -1,4 +1,3 @@
-
 services:
 
   db:
@@ -17,7 +16,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
 
   wpoms_admin:
-    build: ./wpoms_admin
+    image: 924982554051.dkr.ecr.ap-south-1.amazonaws.com/backend-repo:${IMAGE_TAG}
     container_name: wpoms_admin
 
     ports:
@@ -32,14 +31,14 @@ services:
       SPRING_DATASOURCE_PASSWORD: postgres
 
   wpoms_web:
-    build: ./wpoms_web
+    image: 924982554051.dkr.ecr.ap-south-1.amazonaws.com/frontend-repo:${IMAGE_TAG}
     container_name: wpoms_web
 
     ports:
       - "8002:5173"
 
     environment:
-      VITE_API_BASE_URL: http://localhost:8001
+      VITE_API_BASE_URL: http://13.234.50.236:8001
 
     depends_on:
       - wpoms_admin

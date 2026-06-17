@@ -55,3 +55,13 @@ module "ec2" {
   security_group = module.security_group.sg_id
   user_data      = "${path.module}/user_data.sh"
 }
+
+# Elastic IP
+resource "aws_eip" "this" {
+  instance = module.ec2.instance_id
+  domain   = "vpc"
+}
+
+output "elastic_ip" {
+  value = aws_eip.this.public_ip
+}

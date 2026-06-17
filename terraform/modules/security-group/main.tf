@@ -22,7 +22,19 @@ resource "aws_security_group" "this" {
     protocol  = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
+  ingress {
+    from_port = 8001 //backend
+    to_port   = 8001
+    protocol  = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 
+  ingress {
+    from_port = 8002 //frontend
+    to_port   = 8002
+    protocol  = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
   egress {
     from_port = 0
     to_port   = 0
