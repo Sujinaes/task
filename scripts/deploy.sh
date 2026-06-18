@@ -1,64 +1,105 @@
 #!/bin/bash
-
 set -euo pipefail
 
-AWS_REGION=$1
-AWS_ACCOUNT_ID=$2
-NEW_TAG=$3
+AWS_REGION="$1"
+AWS_ACCOUNT_ID="$2"
+NEW_TAG="$3"
 
-ECR_REGISTRY=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+ECR_REGISTRY="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
+APP_DIR="/home/ec2-user"
 
-cd /home/ec2-user
+cd "$APP_DIR"
 
-echo "🚀 Deploying version: $NEW_TAG"
+echo "$(date) 🚀 Deploying version: $NEW_TAG"
 
-# STEP 1: read previous known-good version (do NOT write current_version.txt yet)
+# -----------------------------
+# STEP 1: Read previous version
+# -----------------------------
+OLD_TAG=""
 if [ -f current_version.txt ]; then
     OLD_TAG=$(cat current_version.txt)
-else
-    OLD_TAG=""
 fi
 
-# STEP 2: login to ECR
+# -----------------------------
+# STEP 2: Validate input
+# -----------------------------
+if [ -z "$NEW_TAG" ]; then
+    echo "❌ NEW_TAG is empty. Exiting."
+    exit 1
+fi
+
+# -----------------------------
+# STEP 3: Login to ECR
+# -----------------------------
 aws ecr get-login-password --region "$AWS_REGION" \
 | docker login --username AWS --password-stdin "$ECR_REGISTRY"
 
-# STEP 3: set tag for docker compose
+# -----------------------------
+# STEP 4: Set new deployment tag safely
+# -----------------------------
 export IMAGE_TAG="$NEW_TAG"
-echo "IMAGE_TAG=$NEW_TAG" > .env
+echo "IMAGE_TAG=$NEW_TAG" > .env.tmp
+mv .env.tmp .env
 
-# STEP 4: deploy new version (force recreate for safety)
+# -----------------------------
+# STEP 5: Deploy new version
+# -----------------------------
 docker compose pull
 docker compose up -d --force-recreate
 
-sleep 10
+# -----------------------------
+# STEP 6: Wait for backend readiness
+# -----------------------------
+echo "⏳ Waiting for backend to become healthy..."
 
-# STEP 5: health check (no Actuator available — just confirm the app responds to HTTP)
-HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8001/ || true)
+HTTP_CODE="000"
 
-echo "Health check code: $HTTP_CODE"
+for i in {1..15}; do
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+    http://localhost:8001/actuator/health || true)
 
-# 000 means curl couldn't connect at all (app is down). Any real HTTP response
-# (200, 404, 401, etc.) means the server process is up and answering requests.
-if [ "$HTTP_CODE" = "000" ]; then
-    echo "❌ Deployment failed → starting rollback"
+    echo "Attempt $i → HTTP: $HTTP_CODE"
 
-    if [ -n "$OLD_TAG" ]; then
+    if [ "$HTTP_CODE" = "200" ]; then
+        echo "✅ Backend is healthy"
+        break
+    fi
+
+    sleep 5
+done
+
+# If still not healthy, mark failure
+if [ "$HTTP_CODE" != "200" ]; then
+    HTTP_CODE="000"
+fi
+
+# -----------------------------
+# STEP 7: Failure → Rollback
+# -----------------------------
+if [ "$HTTP_CODE" != "200" ]; then
+    echo "❌ Deployment failed → triggering rollback"
+
+    if [ -n "$OLD_TAG" ] && [ "$OLD_TAG" != "$NEW_TAG" ]; then
         echo "🔁 Rolling back to: $OLD_TAG"
 
         export IMAGE_TAG="$OLD_TAG"
         echo "IMAGE_TAG=$OLD_TAG" > .env
-        docker compose up -d --force-recreate wpoms_admin wpoms_web
 
-        echo "✅ Rollback completed (current_version.txt left unchanged at $OLD_TAG)"
+        docker compose pull
+        docker compose up -d --force-recreate
+
+        echo "✅ Rollback completed successfully"
     else
-        echo "⚠️ No previous version found, cannot roll back"
+        echo "⚠️ No valid previous version found. Cannot rollback."
     fi
 
+    echo "$(date) ❌ Deployment FAILED for $NEW_TAG"
     exit 1
 fi
 
-# STEP 6: only record the new tag as "current" once it's confirmed healthy
+# -----------------------------
+# STEP 8: Success → Save state
+# -----------------------------
 echo "$NEW_TAG" > current_version.txt
 
-echo "✅ Deployment successful"
+echo "$(date) ✅ Deployment successful: $NEW_TAG"
