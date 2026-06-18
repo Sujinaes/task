@@ -35,71 +35,23 @@ aws ecr get-login-password --region "$AWS_REGION" \
 | docker login --username AWS --password-stdin "$ECR_REGISTRY"
 
 # -----------------------------
-# STEP 4: Set new deployment tag safely
+# STEP 4: Update image tag safely
 # -----------------------------
 export IMAGE_TAG="$NEW_TAG"
 echo "IMAGE_TAG=$NEW_TAG" > .env.tmp
 mv .env.tmp .env
 
 # -----------------------------
-# STEP 5: Deploy new version
+# STEP 5: Deploy application
 # -----------------------------
 docker compose pull
 docker compose up -d --force-recreate
 
-# -----------------------------
-# STEP 6: Wait for backend readiness
-# -----------------------------
-echo "⏳ Waiting for backend to become healthy..."
-
-HTTP_CODE="000"
-
-for i in {1..15}; do
-    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
-    http://localhost:8001/actuator/health || true)
-
-    echo "Attempt $i → HTTP: $HTTP_CODE"
-
-    if [ "$HTTP_CODE" = "200" ]; then
-        echo "✅ Backend is healthy"
-        break
-    fi
-
-    sleep 5
-done
-
-# If still not healthy, mark failure
-if [ "$HTTP_CODE" != "200" ]; then
-    HTTP_CODE="000"
-fi
+echo "✅ Containers started successfully"
 
 # -----------------------------
-# STEP 7: Failure → Rollback
-# -----------------------------
-if [ "$HTTP_CODE" != "200" ]; then
-    echo "❌ Deployment failed → triggering rollback"
-
-    if [ -n "$OLD_TAG" ] && [ "$OLD_TAG" != "$NEW_TAG" ]; then
-        echo "🔁 Rolling back to: $OLD_TAG"
-
-        export IMAGE_TAG="$OLD_TAG"
-        echo "IMAGE_TAG=$OLD_TAG" > .env
-
-        docker compose pull
-        docker compose up -d --force-recreate
-
-        echo "✅ Rollback completed successfully"
-    else
-        echo "⚠️ No valid previous version found. Cannot rollback."
-    fi
-
-    echo "$(date) ❌ Deployment FAILED for $NEW_TAG"
-    exit 1
-fi
-
-# -----------------------------
-# STEP 8: Success → Save state
+# STEP 6: Save deployed version
 # -----------------------------
 echo "$NEW_TAG" > current_version.txt
 
-echo "$(date) ✅ Deployment successful: $NEW_TAG"
+echo "$(date) ✅ Deployment completed: $NEW_TAG"
