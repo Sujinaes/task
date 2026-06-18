@@ -3,6 +3,7 @@ services:
   db:
     image: postgres:15
     container_name: wpoms_db
+    restart: unless-stopped
 
     environment:
       POSTGRES_DB: wpoms-dev
@@ -15,9 +16,11 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+
   wpoms_admin:
     image: 924982554051.dkr.ecr.ap-south-1.amazonaws.com/backend-repo:${IMAGE_TAG}
     container_name: wpoms_admin
+    restart: unless-stopped
 
     ports:
       - "8001:8081"
@@ -30,18 +33,27 @@ services:
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
 
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+
   wpoms_web:
     image: 924982554051.dkr.ecr.ap-south-1.amazonaws.com/frontend-repo:${IMAGE_TAG}
     container_name: wpoms_web
+    restart: unless-stopped
 
     ports:
       - "8002:5173"
 
     environment:
-      VITE_API_BASE_URL: http://13.234.50.236:8001
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL}
 
     depends_on:
       - wpoms_admin
+
 
 volumes:
   postgres_data:

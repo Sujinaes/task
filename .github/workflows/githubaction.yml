@@ -5,12 +5,17 @@ on:
     branches:
       - main
 
+concurrency:
+  group: production-deploy
+  cancel-in-progress: true
+
 jobs:
+
   build-and-push:
     runs-on: ubuntu-latest
 
     strategy:
-      fail-fast: false  # let both matrix legs finish even if one fails
+      fail-fast: true
       matrix:
         include:
           - repo: backend-repo
@@ -33,25 +38,32 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build and Push Image
+      - name: Build Image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPO: ${{ matrix.repo }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          DATE=$(date +%Y-%m-%d)
-
           docker build -t $ECR_REGISTRY/$ECR_REPO:$IMAGE_TAG ${{ matrix.path }}
-          docker tag $ECR_REGISTRY/$ECR_REPO:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPO:latest
-          docker tag $ECR_REGISTRY/$ECR_REPO:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPO:$DATE
 
+      - name: Push Image (immutable only)
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPO: ${{ matrix.repo }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
           docker push $ECR_REGISTRY/$ECR_REPO:$IMAGE_TAG
-          docker push $ECR_REGISTRY/$ECR_REPO:latest
-          docker push $ECR_REGISTRY/$ECR_REPO:$DATE
+
+      - name: Verify push
+        run: |
+          aws ecr describe-images \
+            --repository-name ${{ matrix.repo }} \
+            --image-ids imageTag=${{ github.sha }}
 
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
+
     steps:
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1
@@ -59,17 +71,9 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
-          envs: IMAGE_TAG
           script: |
-            aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
-
-            cd /home/ec2-user
-
-            # Write IMAGE_TAG to a .env file so docker compose reliably picks it up,
-            # rather than relying on shell export surviving across the script block.
-            echo "IMAGE_TAG=${{ github.sha }}" > .env
-
-            docker compose pull
-            docker compose up -d
-        env:
-          IMAGE_TAG: ${{ github.sha }}
+            chmod +x /home/ec2-user/deploy.sh
+            /home/ec2-user/deploy.sh \
+              "${{ secrets.AWS_REGION }}" \
+              "${{ secrets.AWS_ACCOUNT_ID }}" \
+              "${{ github.sha }}"
