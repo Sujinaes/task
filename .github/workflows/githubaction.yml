@@ -10,6 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     strategy:
+      fail-fast: false  # let both matrix legs finish even if one fails
       matrix:
         include:
           - repo: backend-repo
@@ -58,12 +59,17 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
+          envs: IMAGE_TAG
           script: |
-            aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 924982554051.dkr.ecr.ap-south-1.amazonaws.com
-
-            export IMAGE_TAG=${{ github.sha }}
+            aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
 
             cd /home/ec2-user
 
+            # Write IMAGE_TAG to a .env file so docker compose reliably picks it up,
+            # rather than relying on shell export surviving across the script block.
+            echo "IMAGE_TAG=${{ github.sha }}" > .env
+
             docker compose pull
             docker compose up -d
+        env:
+          IMAGE_TAG: ${{ github.sha }}
