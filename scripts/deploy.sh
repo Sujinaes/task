@@ -12,19 +12,20 @@ cd /home/ec2-user
 
 echo "🚀 Deploying version: $NEW_TAG"
 
-# STEP 1: store previous version
+# STEP 1: read previous known-good version (do NOT write current_version.txt yet)
 if [ -f current_version.txt ]; then
-    cp current_version.txt previous_version.txt
+    OLD_TAG=$(cat current_version.txt)
+else
+    OLD_TAG=""
 fi
-
-echo "$NEW_TAG" > current_version.txt
 
 # STEP 2: login to ECR
 aws ecr get-login-password --region "$AWS_REGION" \
 | docker login --username AWS --password-stdin "$ECR_REGISTRY"
 
-# STEP 3: export tag safely
+# STEP 3: set tag for docker compose
 export IMAGE_TAG="$NEW_TAG"
+echo "IMAGE_TAG=$NEW_TAG" > .env
 
 # STEP 4: deploy new version (force recreate for safety)
 docker compose pull
@@ -32,31 +33,32 @@ docker compose up -d --force-recreate
 
 sleep 10
 
-# STEP 5: strong health check (backend-specific)
-HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8001/actuator/health || true)
+# STEP 5: health check (no Actuator available — just confirm the app responds to HTTP)
+HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8001/ || true)
 
 echo "Health check code: $HTTP_CODE"
 
-if [ "$HTTP_CODE" != "200" ]; then
+# 000 means curl couldn't connect at all (app is down). Any real HTTP response
+# (200, 404, 401, etc.) means the server process is up and answering requests.
+if [ "$HTTP_CODE" = "000" ]; then
     echo "❌ Deployment failed → starting rollback"
 
-    # cleanup broken containers
-    docker compose down
-
-    if [ -f previous_version.txt ]; then
-        OLD_TAG=$(cat previous_version.txt)
-
+    if [ -n "$OLD_TAG" ]; then
         echo "🔁 Rolling back to: $OLD_TAG"
 
         export IMAGE_TAG="$OLD_TAG"
-        docker compose up -d --force-recreate
+        echo "IMAGE_TAG=$OLD_TAG" > .env
+        docker compose up -d --force-recreate wpoms_admin wpoms_web
 
-        echo "✅ Rollback completed"
+        echo "✅ Rollback completed (current_version.txt left unchanged at $OLD_TAG)"
     else
-        echo "⚠️ No previous version found"
+        echo "⚠️ No previous version found, cannot roll back"
     fi
 
     exit 1
 fi
+
+# STEP 6: only record the new tag as "current" once it's confirmed healthy
+echo "$NEW_TAG" > current_version.txt
 
 echo "✅ Deployment successful"
