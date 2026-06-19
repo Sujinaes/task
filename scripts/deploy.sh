@@ -16,20 +16,19 @@ if [ -z "$NEW_TAG" ]; then
     echo " NEW_TAG is empty. Exiting."
     exit 1
 fi
-
 aws ecr get-login-password --region "$AWS_REGION" \
 | docker login --username AWS --password-stdin "$ECR_REGISTRY"
-
 export IMAGE_TAG="$NEW_TAG"
 echo "IMAGE_TAG=$NEW_TAG" > .env.tmp
 mv .env.tmp .env
-
-
 docker compose pull
 docker compose up -d --force-recreate
-
 echo "Containers started successfully"
-
 echo "$NEW_TAG" > current_version.txt
-
 echo "$(date)  Deployment completed: $NEW_TAG"
+
+
+
+
+
+
