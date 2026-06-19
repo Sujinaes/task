@@ -94,7 +94,7 @@ jobs:
       - name: Verify deployment
         run: |
           for i in {1..5}; do
-            if curl -fsS "http://${{ secrets.EC2_HOST }}:5173/" > /dev/null; then
+            if curl -fsS "http://${{ secrets.EC2_HOST }}:8002/" > /dev/null; then
               echo "Deployment verified: frontend is responding."
               exit 0
             fi
