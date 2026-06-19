@@ -90,3 +90,16 @@ jobs:
               "${{ secrets.AWS_REGION }}" \
               "${{ secrets.AWS_ACCOUNT_ID }}" \
               "${{ github.sha }}"
+
+      - name: Verify deployment
+        run: |
+          for i in {1..5}; do
+            if curl -fsS "http://${{ secrets.EC2_HOST }}:5173/" > /dev/null; then
+              echo "Deployment verified: frontend is responding."
+              exit 0
+            fi
+            echo "Attempt $i failed, retrying in 10s..."
+            sleep 10
+          done
+          echo "Deployment verification failed after 5 attempts."
+          exit 1

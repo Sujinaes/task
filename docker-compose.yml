@@ -16,11 +16,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
+    
 
 
   wpoms_admin:
@@ -40,12 +36,7 @@ services:
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
 
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8081/actuator/health || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-
+   
 
   wpoms_web:
     image: 924982554051.dkr.ecr.ap-south-1.amazonaws.com/frontend-repo:${IMAGE_TAG}
